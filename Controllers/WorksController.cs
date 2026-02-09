@@ -11,15 +11,19 @@ namespace PortfolioHub.Controllers;
 [Authorize]
 public class WorksController : Controller
 {
+    private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IWebHostEnvironment _env;
+    private readonly ILogger<WorksController> _logger;
 
-    public WorksController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IWebHostEnvironment env)
+    public WorksController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IWebHostEnvironment env, ILogger<WorksController> logger)
     {
         _db = db;
         _userManager = userManager;
         _env = env;
+        _logger = logger;
     }
 
     // /works
@@ -67,85 +71,140 @@ public class WorksController : Controller
             return View(model);
         }
 
-        var work = new PortfolioItem
+        var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "works");
+        Directory.CreateDirectory(uploadsDir);
+
+        var writtenFiles = new List<string>();
+
+        await using var tx = await _db.Database.BeginTransactionAsync();
+
+        try
         {
-            OwnerUserId = user.Id,
-            Title = model.Title.Trim(),
-            Description = model.Description?.Trim() ?? "",
-            Visibility = model.Visibility,
-            IsPinned = model.IsPinned,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _db.PortfolioItems.Add(work);
-        await _db.SaveChangesAsync();
-
-        if (model.Images != null && model.Images.Any())
-        {
-            var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "works");
-            Directory.CreateDirectory(uploadsDir);
-
-            int order = 0;
-
-            foreach (var file in model.Images)
+            var work = new PortfolioItem
             {
-                if (file == null || file.Length == 0)
-                    continue;
+                OwnerUserId = user.Id,
+                Title = model.Title.Trim(),
+                Description = model.Description?.Trim() ?? "",
+                Visibility = model.Visibility,
+                IsPinned = model.IsPinned,
+                CreatedAt = DateTime.UtcNow
+            };
 
-                var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-                var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            _db.PortfolioItems.Add(work);
 
-                if (!allowed.Contains(ext))
+            if (model.Images != null && model.Images.Any())
+            {
+                int order = 0;
+
+                foreach (var file in model.Images)
                 {
-                    ModelState.AddModelError("", $"Формат {ext} не поддерживается.");
-                    continue;
+                    if (file == null || file.Length == 0)
+                        continue;
+
+                    var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+                    if (!AllowedImageExtensions.Contains(ext))
+                    {
+                        ModelState.AddModelError("", $"Формат {ext} не поддерживается.");
+                        continue;
+                    }
+
+                    if (file.Length > 10 * 1024 * 1024)
+                    {
+                        ModelState.AddModelError("", $"Файл {file.FileName} слишком большой (макс 10MB).");
+                        continue;
+                    }
+
+                    var safeName = $"{Guid.NewGuid():N}{ext}";
+                    var absPath = Path.Combine(uploadsDir, safeName);
+
+                    await using (var stream = new FileStream(absPath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    writtenFiles.Add(absPath);
+
+                    var mediaFile = new MediaFile
+                    {
+                        OwnerUserId = user.Id,
+                        StoredPath = $"uploads/works/{safeName}",
+                        OriginalFileName = Clamp(file.FileName, 120),
+                        ContentType = ResolveContentType(file.ContentType, ext),
+                        SizeBytes = file.Length,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _db.MediaFiles.Add(mediaFile);
+                    _db.PortfolioMedia.Add(new PortfolioMedia
+                    {
+                        PortfolioItem = work,
+                        MediaFile = mediaFile,
+                        SortOrder = order++
+                    });
                 }
+            }
 
-                // максимум 10MB
-                if (file.Length > 10 * 1024 * 1024)
-                {
-                    ModelState.AddModelError("", $"Файл {file.FileName} слишком большой (макс 10MB).");
-                    continue;
-                }
+            if (!ModelState.IsValid)
+            {
+                await tx.RollbackAsync();
+                CleanupFiles(writtenFiles);
+                return View(model);
+            }
 
-                var safeName = $"{Guid.NewGuid():N}{ext}";
-                var absPath = Path.Combine(uploadsDir, safeName);
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync();
+            CleanupFiles(writtenFiles);
+            _logger.LogError(ex, "Ошибка при создании работы с изображениями для пользователя {UserId}", user.Id);
+            ModelState.AddModelError("", "Не удалось сохранить работу с изображениями. Проверьте файлы и попробуйте снова.");
+            return View(model);
+        }
+    }
 
-                await using (var stream = new FileStream(absPath, FileMode.Create))
-                {
-                    await file.CopyToAsync(stream);
-                }
 
-                var relPath = $"uploads/works/{safeName}";
-
-                var mediaFile = new MediaFile
-                {
-                    OwnerUserId = user.Id,
-                    StoredPath = relPath,
-                    OriginalFileName = file.FileName,
-                    ContentType = file.ContentType,
-                    SizeBytes = file.Length,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _db.MediaFiles.Add(mediaFile);
-                await _db.SaveChangesAsync();
-
-                _db.PortfolioMedia.Add(new PortfolioMedia
-                {
-                    PortfolioItemId = work.Id,
-                    MediaFileId = mediaFile.Id,
-                    SortOrder = order++
-                });
-
-                await _db.SaveChangesAsync();
+    private void CleanupFiles(IEnumerable<string> absolutePaths)
+    {
+        foreach (var path in absolutePaths)
+        {
+            try
+            {
+                if (System.IO.File.Exists(path))
+                    System.IO.File.Delete(path);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось удалить временный файл {Path}", path);
             }
         }
+    }
 
-        if (!ModelState.IsValid)
-            return View(model);
+    private static string Clamp(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
 
-        return RedirectToAction(nameof(Index));
+        return value.Length <= maxLength
+            ? value
+            : value[..maxLength];
+    }
+
+    private static string ResolveContentType(string? incomingContentType, string extension)
+    {
+        if (!string.IsNullOrWhiteSpace(incomingContentType))
+            return Clamp(incomingContentType, 80);
+
+        return extension switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => "application/octet-stream"
+        };
     }
 
 
