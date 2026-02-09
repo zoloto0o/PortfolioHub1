@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PortfolioHub")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8be3e806dc6100a58b5c46a82cfac0e7566b8e94")]
 [assembly: System.Reflection.AssemblyProductAttribute("PortfolioHub")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PortfolioHub")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

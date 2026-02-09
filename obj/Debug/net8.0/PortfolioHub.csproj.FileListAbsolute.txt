@@ -131,3 +131,4 @@ C:\Projects\PortfolioHub\obj\Debug\net8.0\refint\PortfolioHub.dll
 C:\Projects\PortfolioHub\obj\Debug\net8.0\PortfolioHub.pdb
 C:\Projects\PortfolioHub\obj\Debug\net8.0\PortfolioHub.genruntimeconfig.cache
 C:\Projects\PortfolioHub\obj\Debug\net8.0\ref\PortfolioHub.dll
+C:\Projects\PortfolioHub\obj\Debug\net8.0\PortfolioHub.sourcelink.json
