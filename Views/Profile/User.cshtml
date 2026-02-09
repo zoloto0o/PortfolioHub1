@@ -1,0 +1,279 @@
+﻿@model PortfolioHub.ViewModels.ProfilePageViewModel
+@{
+    ViewData["Title"] = Model.Profile.DisplayName;
+}
+
+<style>
+    .ph-hero {
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0f172a;
+        border: 1px solid rgba(255,255,255,0.08);
+        margin-bottom: 16px;
+    }
+
+    .ph-cover {
+        height: 220px;
+        background: linear-gradient(135deg, #1f2937, #0b1220);
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+
+        .ph-cover::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0.05));
+        }
+
+    .ph-hero-content {
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        padding: 14px 16px 16px 16px;
+        margin-top: -54px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .ph-avatar {
+        width: 104px;
+        height: 104px;
+        border-radius: 12px;
+        background: #111827;
+        border: 2px solid rgba(255,255,255,0.12);
+        overflow: hidden;
+        flex: 0 0 auto;
+    }
+
+        .ph-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .ph-name {
+        font-size: 26px;
+        font-weight: 700;
+        color: #fff;
+        margin: 0;
+    }
+
+    .ph-username {
+        color: rgba(255,255,255,0.70);
+        margin: 2px 0 0 0;
+    }
+
+    .ph-grid {
+        display: grid;
+        grid-template-columns: 320px 1fr 320px;
+        gap: 16px;
+    }
+
+    .ph-card {
+        background: #0b1220;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        padding: 14px;
+        color: rgba(255,255,255,0.90);
+    }
+
+    .ph-muted {
+        color: rgba(255,255,255,0.65);
+    }
+
+    .work-card {
+        background: #0b1220;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 12px;
+    }
+
+    .work-thumb {
+        height: 180px;
+        background: #111827;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(255,255,255,0.55);
+    }
+
+        .work-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .work-body {
+        padding: 12px 14px;
+    }
+
+    .work-title {
+        font-weight: 700;
+        margin: 0 0 4px 0;
+        color: #fff;
+    }
+
+    .badge-pill {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: rgba(255,255,255,0.04);
+        margin: 6px 6px 0 0;
+        font-size: 13px;
+        color: rgba(255,255,255,0.85);
+    }
+
+    body {
+        background: #0a0f16;
+    }
+</style>
+
+@{
+    string? coverUrl = null;
+    if (Model.Profile.CoverFile != null && !string.IsNullOrWhiteSpace(Model.Profile.CoverFile.StoredPath))
+    {
+        coverUrl = Url.Content("~/" + Model.Profile.CoverFile.StoredPath);
+    }
+
+    string? avatarUrl = null;
+    if (Model.Profile.AvatarFile != null && !string.IsNullOrWhiteSpace(Model.Profile.AvatarFile.StoredPath))
+    {
+        avatarUrl = Url.Content("~/" + Model.Profile.AvatarFile.StoredPath);
+    }
+}
+
+<div class="ph-hero">
+    <div class="ph-cover" style="@(coverUrl != null ? $"background-image:url('{coverUrl}')" : "")"></div>
+
+    <div class="ph-hero-content">
+        <div class="ph-avatar">
+            @if (avatarUrl != null)
+            {
+                <img src="@avatarUrl" alt="avatar" />
+            }
+        </div>
+
+        <div>
+            <h1 class="ph-name">@Model.Profile.DisplayName</h1>
+            <div class="ph-username">/u/@Model.Profile.Username</div>
+        </div>
+    </div>
+</div>
+
+<div class="ph-grid">
+
+    <!-- Левая колонка -->
+    <div class="ph-card">
+        <h5 style="color:#fff; margin-bottom:10px;">Информация</h5>
+
+        <div class="ph-muted">Страна / город</div>
+        <div>
+            @(string.IsNullOrWhiteSpace(Model.Profile.Country) && string.IsNullOrWhiteSpace(Model.Profile.City)
+                ? "—"
+                : $"{Model.Profile.Country} {Model.Profile.City}".Trim())
+        </div>
+
+        <hr style="border-color: rgba(255,255,255,0.10);" />
+
+        <div class="ph-muted">На сервисе</div>
+        <div>@Model.YearsOnService лет</div>
+
+        <hr style="border-color: rgba(255,255,255,0.10);" />
+
+        <div class="ph-muted">О себе</div>
+        <div>@(string.IsNullOrWhiteSpace(Model.Profile.About) ? "—" : Model.Profile.About)</div>
+    </div>
+
+    <!-- Центр -->
+    <div>
+        @if (Model.PinnedWorks.Any())
+        {
+            <div class="ph-card" style="margin-bottom: 12px;">
+                <h5 style="color:#fff; margin-bottom:10px;">Закреплённые работы</h5>
+                <div class="ph-muted">Топ-работы профиля</div>
+            </div>
+
+            foreach (var w in Model.PinnedWorks)
+            {
+                var media = w.Media ?? new List<PortfolioHub.Models.PortfolioMedia>();
+                var thumb = media.OrderBy(m => m.SortOrder).FirstOrDefault()?.MediaFile?.StoredPath;
+
+                <div class="work-card">
+                    <div class="work-thumb">
+                        @if (!string.IsNullOrWhiteSpace(thumb))
+                        {
+                            <img src="@Url.Content("~/" + thumb)" alt="thumb" />
+                        }
+                        else
+                        {
+                            <span>нет превью</span>
+                        }
+                    </div>
+                    <div class="work-body">
+                        <div class="work-title">@w.Title</div>
+                        <div class="ph-muted">@w.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                    </div>
+                </div>
+            }
+        }
+
+        <div class="ph-card" style="margin-bottom: 12px;">
+            <h5 style="color:#fff; margin-bottom:10px;">Работы</h5>
+            <div class="ph-muted">Публичная лента</div>
+        </div>
+
+        @if (!Model.Works.Any())
+        {
+            <div class="ph-card">
+                Пока нет работ.
+            </div>
+        }
+        else
+        {
+            foreach (var w in Model.Works)
+            {
+                var media = w.Media ?? new List<PortfolioHub.Models.PortfolioMedia>();
+                var thumb = media.OrderBy(m => m.SortOrder).FirstOrDefault()?.MediaFile?.StoredPath;
+
+                <div class="work-card">
+                    <div class="work-thumb">
+                        @if (!string.IsNullOrWhiteSpace(thumb))
+                        {
+                            <img src="@Url.Content("~/" + thumb)" alt="thumb" />
+                        }
+                        else
+                        {
+                            <span>нет превью</span>
+                        }
+                    </div>
+                    <div class="work-body">
+                        <div class="work-title">@w.Title</div>
+                        <div class="ph-muted">@w.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Правая колонка -->
+    <div class="ph-card">
+        <h5 style="color:#fff; margin-bottom:10px;">Награды</h5>
+
+        @if (!Model.Badges.Any())
+        {
+            <div class="ph-muted">Пока нет наград.</div>
+        }
+        else
+        {
+            foreach (var ub in Model.Badges.Take(12))
+            {
+                <div class="badge-pill" title="@ub.Badge.Description">@ub.Badge.Name</div>
+            }
+        }
+    </div>
+
+</div>

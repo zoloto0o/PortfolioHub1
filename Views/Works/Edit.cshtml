@@ -1,0 +1,39 @@
+﻿@model PortfolioHub.ViewModels.WorkEditViewModel
+@{
+    ViewData["Title"] = "Редактировать работу";
+}
+
+<h2>Редактировать работу</h2>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+
+    <input type="hidden" asp-for="Id" />
+
+    <div class="mb-3">
+        <label class="form-label">Название</label>
+        <input class="form-control" asp-for="Title" />
+        <span class="text-danger" asp-validation-for="Title"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Описание</label>
+        <textarea class="form-control" asp-for="Description" rows="5"></textarea>
+        <span class="text-danger" asp-validation-for="Description"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Видимость</label>
+        <select class="form-select" asp-for="Visibility" asp-items="Html.GetEnumSelectList<PortfolioHub.Models.Visibility>()"></select>
+    </div>
+
+    <div class="form-check mb-3">
+        <input class="form-check-input" asp-for="IsPinned" />
+        <label class="form-check-label">Закрепить</label>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+    <a class="btn btn-secondary" href="/works">Назад</a>
+
+    <div class="text-danger mt-2" asp-validation-summary="All"></div>
+</form>

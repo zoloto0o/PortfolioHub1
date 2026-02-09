@@ -1,0 +1,53 @@
+﻿@model List<PortfolioHub.Models.PortfolioItem>
+@{
+    ViewData["Title"] = "Мои работы";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Мои работы</h2>
+    <a class="btn btn-primary" href="/works/create">+ Добавить</a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-secondary">Пока нет работ.</div>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var w in Model)
+        {
+            var media = w.Media ?? new List<PortfolioHub.Models.PortfolioMedia>();
+            var thumb = media.OrderBy(m => m.SortOrder).FirstOrDefault()?.MediaFile?.StoredPath;
+
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="fw-bold">@w.Title</div>
+                        <div class="text-muted small">
+                            @w.Visibility • @w.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy") @(w.IsPinned ? "• закреплено" : "")
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(thumb))
+                        {
+                            <img src="@Url.Content("~/" + thumb)"
+                                 style="max-width:220px; border-radius:10px; margin-top:10px;" />
+                        }
+                    </div>
+
+                    <div class="text-end">
+                        <a class="btn btn-sm btn-outline-secondary" href="/works/edit/@w.Id">Редактировать</a>
+
+                        <form method="post" action="/works/delete/@w.Id" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-sm btn-outline-danger" type="submit"
+                                    onclick="return confirm('Удалить работу?');">
+                                Удалить
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

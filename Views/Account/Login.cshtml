@@ -1,0 +1,32 @@
+﻿@model PortfolioHub.ViewModels.LoginViewModel
+
+@{
+    ViewData["Title"] = "Вход";
+}
+
+<h2>Вход</h2>
+
+<form method="post">
+    <div>
+        <label>Логин (username или email)</label><br />
+        <input asp-for="Login" />
+        <span asp-validation-for="Login"></span>
+    </div>
+
+    <div>
+        <label>Пароль</label><br />
+        <input asp-for="Password" />
+        <span asp-validation-for="Password"></span>
+    </div>
+
+    <div>
+        <label>
+            <input asp-for="RememberMe" />
+            Запомнить меня
+        </label>
+    </div>
+
+    <button type="submit">Войти</button>
+
+    <div asp-validation-summary="All"></div>
+</form>
