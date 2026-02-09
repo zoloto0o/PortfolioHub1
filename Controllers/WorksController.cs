@@ -11,6 +11,8 @@ namespace PortfolioHub.Controllers;
 [Authorize]
 public class WorksController : Controller
 {
+    private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IWebHostEnvironment _env;
@@ -93,9 +95,8 @@ public class WorksController : Controller
                     continue;
 
                 var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-                var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
 
-                if (!allowed.Contains(ext))
+                if (!AllowedImageExtensions.Contains(ext))
                 {
                     ModelState.AddModelError("", $"Формат {ext} не поддерживается.");
                     continue;
@@ -122,8 +123,8 @@ public class WorksController : Controller
                 {
                     OwnerUserId = user.Id,
                     StoredPath = relPath,
-                    OriginalFileName = file.FileName,
-                    ContentType = file.ContentType,
+                    OriginalFileName = Clamp(file.FileName, 120),
+                    ContentType = ResolveContentType(file.ContentType, ext),
                     SizeBytes = file.Length,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -146,6 +147,30 @@ public class WorksController : Controller
             return View(model);
 
         return RedirectToAction(nameof(Index));
+    }
+
+    private static string Clamp(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        return value.Length <= maxLength
+            ? value
+            : value[..maxLength];
+    }
+
+    private static string ResolveContentType(string? incomingContentType, string extension)
+    {
+        if (!string.IsNullOrWhiteSpace(incomingContentType))
+            return Clamp(incomingContentType, 80);
+
+        return extension switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => "application/octet-stream"
+        };
     }
 
 
